@@ -4,6 +4,7 @@
 
 /*		Internet sockets	*/
 int udp_bind(char *port);
+int udp_bind_reuseport(char *port);
 int udp_connect(char *server, char *port);
 int tcp_bind_accept(char *port);
 int tcp_connect(char *server, char *port);

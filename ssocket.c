@@ -16,7 +16,7 @@
 
 
 /* 	Internet Sockets 	*/
-int internet_socket(int type, char *server, char *port, struct sockaddr_in *addr){
+int internet_socket(int type, char *server, char *port, struct sockaddr_in *addr, int reuseport_opt){
 	int sockfd;
 	memset(addr, 0, sizeof(*addr));
 
@@ -26,6 +26,11 @@ int internet_socket(int type, char *server, char *port, struct sockaddr_in *addr
         fprintf(stderr, "socket error:: No se pudo crear el socket\n");
         return -1;
     }
+
+    if(reuseport_opt==1){
+        int one = 1;
+        setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &one, sizeof(one));
+    }    
 
     //Set Parametros
     (*addr).sin_family = AF_INET;
@@ -41,15 +46,15 @@ int internet_socket(int type, char *server, char *port, struct sockaddr_in *addr
 
 /*		UDP 	*/
 
-int udp_socket(char *server, char *port, struct sockaddr_in *addr){
-	return internet_socket(SOCK_DGRAM, server, port, addr);
+int udp_socket(char *server, char *port, struct sockaddr_in *addr, int reuseport_opt){
+	return internet_socket(SOCK_DGRAM, server, port, addr, reuseport_opt);
 }
 
-int udp_bind(char *port){
+int udp_bind_by_type(char *port, int reuseport_opt){
     int sockfd;
     struct sockaddr_in addr;
 
-    sockfd = udp_socket(NULL, port, &addr);
+    sockfd = udp_socket(NULL, port, &addr, reuseport_opt);
 
     if(bind(sockfd, (struct sockaddr*) &addr, sizeof(addr)) < 0){
         fprintf(stderr, "socket error:: No se pudo hacer bind. Error: %s\n", strerror(errno));
@@ -60,12 +65,20 @@ int udp_bind(char *port){
     return sockfd;
 }
 
+int udp_bind(char *port){
+    return udp_bind_by_type(port, 0);
+}
+
+int udp_bind_reuseport(char *port){
+    return udp_bind_by_type(port, 1);
+}
+
 int udp_connect(char *server, char *port){
     int sockfd;
     struct sockaddr_in addr;
 
     //crear Socket
-    sockfd = udp_socket(server, port, &addr);
+    sockfd = udp_socket(server, port, &addr, 0);
 
     if(connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
         fprintf(stderr, "socket error:: No se pudo hacer connect. Error: %s\n", strerror(errno));
@@ -80,16 +93,16 @@ int udp_connect(char *server, char *port){
 
 /*		TCP 	*/
 
-int tcp_socket(char *server, char *port, struct sockaddr_in *addr){
-    return internet_socket(SOCK_STREAM, server, port, addr);
+int tcp_socket(char *server, char *port, struct sockaddr_in *addr, int reuseport_opt){
+    return internet_socket(SOCK_STREAM, server, port, addr, reuseport_opt);
 }
 
-int tcp_bind_accept(char *port){
+int tcp_bind_accept_by_type(char *port, int reuseport_opt){
     int sockfd, sockfd_accepted;
     struct sockaddr_in addr, from;
 
     //crear Socket
-    sockfd = tcp_socket(NULL, port, &addr);
+    sockfd = tcp_socket(NULL, port, &addr, reuseport_opt);
 
     if(bind(sockfd, (struct sockaddr*) &addr, sizeof(addr)) < 0){
         fprintf(stderr, "socket error:: No se pudo hacer bind. Error: %s\n", strerror(errno));
@@ -112,12 +125,20 @@ int tcp_bind_accept(char *port){
     return sockfd_accepted;
 }
 
+int tcp_bind_accept(char *port){
+    return tcp_bind_accept_by_type(port, 0);
+}
+
+int tcp_bind_accept_reuseport(char *port){
+    return tcp_bind_accept_by_type(port, 1);
+}
+
 int tcp_connect(char *server, char *port){
     int sockfd;
     struct sockaddr_in addr;
 
     //crear Socket
-    sockfd = tcp_socket(server, port, &addr);
+    sockfd = tcp_socket(server, port, &addr, 0);
 
     if(connect(sockfd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
         fprintf(stderr, "socket error:: Falla el connect. Error: %s\n", strerror(errno));
