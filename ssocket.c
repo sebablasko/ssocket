@@ -27,10 +27,12 @@ int internet_socket(int type, char *server, char *port, struct sockaddr_in *addr
         return -1;
     }
 
+    #if (SO_REUSEPORT)
     if(reuseport_opt==1){
         int one = 1;
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &one, sizeof(one));
     }    
+    #endif
 
     //Set Parametros
     (*addr).sin_family = AF_INET;
